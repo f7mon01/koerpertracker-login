@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Körper-Tracker</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Körper-Tracker">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --ink: #0f1820;
+  --ink-2: #47525e;
+  --muted: #66717d;
+  --line: #dfe4e9;
+  --accent: #2a78d6;
+  --accent-soft: #e4eefb;
+  --on-accent: #ffffff;
+  --danger: #c3362c;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1013;
+    --surface: #161a1f;
+    --ink: #eef1f4;
+    --ink-2: #b5bec8;
+    --muted: #8b95a0;
+    --line: #2a3138;
+    --accent: #3987e5;
+    --accent-soft: #182a40;
+    --on-accent: #ffffff;
+    --danger: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1013;
+  --surface: #161a1f;
+  --ink: #eef1f4;
+  --ink-2: #b5bec8;
+  --muted: #8b95a0;
+  --line: #2a3138;
+  --accent: #3987e5;
+  --accent-soft: #182a40;
+  --on-accent: #ffffff;
+  --danger: #e66767;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; max-width: 100%; }
+body {
+  overflow-x: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.45 var(--font-body);
+  -webkit-text-size-adjust: 100%;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+[hidden] { display: none !important; }
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(20px + env(safe-area-inset-top)) 16px 104px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.top { display: grid; gap: 2px; }
+.top h1 {
+  margin: 0;
+  font: 700 30px/1.05 var(--font-display);
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+.top p { margin: 0; color: var(--ink-2); }
+
+.banner {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.card h2 {
+  margin: 0;
+  font: 600 20px/1.1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.entry-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.date-field { display: flex; align-items: center; gap: 8px; }
+.pill {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.pill.past { background: transparent; border: 1px solid var(--line); color: var(--ink-2); }
+input[type="date"] {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 6px 8px;
+  font-size: 16px;
+  min-height: 38px;
+  min-width: 0;
+  max-width: 100%;
+}
+form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.weight-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.lbl { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.weight-input { display: flex; align-items: baseline; gap: 8px; border-bottom: 2px solid var(--line); }
+.weight-input:focus-within { border-bottom-color: var(--accent); }
+.weight-input input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: 600 clamp(40px, 13vw, 52px)/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  padding: 2px 0 4px;
+  outline: none;
+}
+.weight-input input::placeholder { color: var(--line); }
+.unit { color: var(--muted); font-weight: 500; }
+.weight-input .unit { font: 500 22px var(--font-display); }
+
+details { border: 1px solid var(--line); border-radius: 12px; }
+summary {
+  list-style: none;
+  padding: 12px 14px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; color: var(--muted); font-weight: 500; }
+details[open] summary::after { content: "–"; }
+.measure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  padding: 0 14px 14px;
+}
+.m-field { display: grid; gap: 3px; }
+.m-field span:first-child { font-size: 13px; color: var(--ink-2); }
+.m-input { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; background: var(--surface); }
+.m-input:focus-within { border-color: var(--accent); }
+.m-input input { flex: 1; width: 100%; min-width: 0; border: 0; background: transparent; padding: 9px 0; font-size: 17px; font-variant-numeric: tabular-nums; outline: none; }
+.m-input .unit { font-size: 14px; }
+
+.form-msg { margin: 0; min-height: 0; font-size: 15px; color: var(--danger); }
+.form-msg:empty { display: none; }
+.btn-primary {
+  border: 0;
+  border-radius: 12px;
+  min-height: 54px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 18px;
+  font-weight: 600;
+}
+.btn-primary:disabled { opacity: 0.6; cursor: default; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg);
+  border-radius: 12px;
+}
+.seg button {
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 0;
+  background: transparent;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+
+.period-nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+.nav-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 22px;
+  line-height: 1;
+  display: grid; place-items: center;
+}
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+.period-label { text-align: center; }
+.period-title { font: 600 22px/1.1 var(--font-display); letter-spacing: 0.02em; }
+.period-sub { font-size: 14px; color: var(--ink-2); }
+
+.hero { text-align: center; display: grid; gap: 2px; }
+.hero-value { font: 600 clamp(44px, 15vw, 60px)/1 var(--font-display); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.hero-value .unit { font-size: 24px; margin-left: 4px; }
+.hero-value.empty { color: var(--muted); font-size: 40px; }
+.hero-meta { font-size: 15px; color: var(--ink-2); }
+.delta { font-weight: 600; color: var(--ink); }
+
+.week-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.day {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 9px;
+  padding: 6px 0 7px;
+  display: grid;
+  gap: 1px;
+  text-align: center;
+}
+.day .d { font-size: 12px; color: var(--muted); }
+.day .v { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.day .v.none { color: var(--muted); font-weight: 400; }
+.day.today { border-color: var(--accent); }
+.day:disabled { opacity: 0.4; cursor: default; }
+
+.chart-wrap { position: relative; }
+.chart-title { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+#chart svg { display: block; width: 100%; max-width: 100%; height: auto; overflow: visible; }
+#chart .hit { fill: transparent; cursor: pointer; }
+#chart .hit:focus { outline: none; }
+#chart .hit:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 13px;
+  line-height: 1.3;
+  padding: 6px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 13px; font-weight: 600; color: var(--muted); padding: 0 8px 8px; }
+th.r, td.r { text-align: right; }
+td { padding: 10px 8px; border-top: 1px solid var(--line); }
+td .s { display: block; font-size: 13px; color: var(--muted); }
+tbody tr { cursor: pointer; }
+tbody tr.sel { background: var(--accent-soft); }
+tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.empty-note { margin: 0; color: var(--ink-2); }
+
+.entry-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.entry-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.entry-list li:first-child { border-top: 0; }
+.e-date { font-weight: 600; }
+.e-vals { font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.e-actions { display: flex; gap: 6px; }
+.btn-small {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 9px;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.btn-small.danger { color: var(--danger); }
+.btn-small.danger-fill { background: var(--danger); border-color: var(--danger); color: #fff; }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-ghost {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+textarea.csv {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 8px;
+}
+.foot { font-size: 13px; color: var(--muted); text-align: center; margin: 4px 0 0; }
+.foot a { color: var(--accent); }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--surface);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.auth-input { display: grid; gap: 4px; }
+.auth-input input {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 12px; font-size: 17px; width: 100%;
+}
+.auth-input input:focus { border-color: var(--accent); outline: none; }
+.auth-hint { margin: 0; font-size: 14px; color: var(--muted); }
+.link-btn { border: 0; background: none; color: var(--accent); padding: 0; font-size: 13px; text-decoration: underline; }
+
+@media (max-width: 360px) {
+  .app { padding-left: 12px; padding-right: 12px; }
+  .card { padding: 14px 12px; }
+  .e-actions { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="app" id="authView" hidden>
+  <header class="top">
+    <h1>Körper-Tracker</h1>
+    <p>Melde dich an oder erstelle ein Konto.</p>
+  </header>
+  <section class="card" aria-label="Anmeldung">
+    <div class="seg" id="authSeg" role="group" aria-label="Modus" style="grid-template-columns:repeat(2,1fr)">
+      <button type="button" data-mode="login" aria-pressed="true">Anmelden</button>
+      <button type="button" data-mode="register" aria-pressed="false">Registrieren</button>
+    </div>
+    <form id="authForm" novalidate>
+      <label class="auth-input"><span class="lbl">Benutzername</span>
+        <input id="authUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20">
+      </label>
+      <label class="auth-input"><span class="lbl">Passwort</span>
+        <input id="authPw" type="password" autocomplete="current-password" maxlength="100">
+      </label>
+      <label class="auth-input" id="authPw2Wrap" hidden><span class="lbl">Passwort wiederholen</span>
+        <input id="authPw2" type="password" autocomplete="new-password" maxlength="100">
+      </label>
+      <p class="auth-hint" id="authHint" hidden>3–20 Zeichen: Buchstaben, Zahlen, Punkt, Minus, Unterstrich. Passwort mindestens 6 Zeichen.</p>
+      <p class="form-msg" id="authMsg" role="alert"></p>
+      <button type="submit" class="btn-primary" id="authBtn">Anmelden</button>
+    </form>
+  </section>
+</main>
+<main class="app" id="appView" hidden>
+  <header class="top">
+    <h1>Körper-Tracker</h1>
+    <p id="todayLabel">&nbsp;</p>
+  </header>
+
+  <div id="banner" class="banner" role="status" hidden></div>
+
+  <section class="card" aria-labelledby="entryTitle">
+    <div class="entry-head">
+      <h2 id="entryTitle">Eintragen</h2>
+      <div class="date-field">
+        <span class="pill" id="datePill">Heute</span>
+        <input type="date" id="fDate" aria-label="Datum des Eintrags">
+      </div>
+    </div>
+    <form id="entryForm" novalidate>
+      <label class="weight-field" for="f-weight">
+        <span class="lbl">Gewicht</span>
+        <span class="weight-input">
+          <input id="f-weight" size="4" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="00,0">
+          <span class="unit">kg</span>
+        </span>
+      </label>
+      <details id="measureBox">
+        <summary><span>Umfänge <span class="muted" id="measureCount"></span></span></summary>
+        <div class="measure-grid" id="measureGrid"></div>
+      </details>
+      <p class="form-msg" id="formMsg" role="alert"></p>
+      <button type="submit" class="btn-primary" id="saveBtn">Eintragen</button>
+    </form>
+  </section>
+
+  <section class="card" id="statsCard" aria-label="Durchschnitte">
+    <div class="chips" id="metricChips" role="group" aria-label="Messwert"></div>
+    <div class="seg" id="granSeg" role="group" aria-label="Zeitraum">
+      <button type="button" data-g="week">Woche</button>
+      <button type="button" data-g="month">Monat</button>
+      <button type="button" data-g="year">Jahr</button>
+    </div>
+    <div class="period-nav">
+      <button type="button" class="nav-btn" id="prevBtn" aria-label="Vorheriger Zeitraum">‹</button>
+      <div class="period-label">
+        <div class="period-title" id="periodTitle">&nbsp;</div>
+        <div class="period-sub" id="periodSub">&nbsp;</div>
+      </div>
+      <button type="button" class="nav-btn" id="nextBtn" aria-label="Nächster Zeitraum">›</button>
+    </div>
+    <div class="hero">
+      <div class="hero-value" id="avgValue">–</div>
+      <div class="hero-meta" id="avgMeta">&nbsp;</div>
+    </div>
+    <div class="week-days" id="weekDays"></div>
+    <div class="chart-wrap" id="chartWrap">
+      <div class="chart-title" id="chartTitle"></div>
+      <div id="chart"></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="histTitle">
+    <h2 id="histTitle">Verlauf</h2>
+    <div id="histBody"></div>
+  </section>
+
+  <section class="card" aria-labelledby="entriesTitle">
+    <h2 id="entriesTitle">Einträge</h2>
+    <ul class="entry-list" id="entryList"></ul>
+    <div class="row-actions">
+      <button type="button" class="btn-ghost" id="moreBtn" hidden>Alle anzeigen</button>
+      <button type="button" class="btn-ghost" id="csvBtn">Als CSV kopieren</button>
+    </div>
+    <textarea class="csv" id="csvOut" readonly hidden aria-label="CSV-Daten zum Kopieren"></textarea>
+  </section>
+
+  <p class="foot" id="storageNote">Verbindet …</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Server ----------
+  var API_URL = "https://script.google.com/macros/s/AKfycbxD1wuEPbAWfpWNFL1UnAKZkWaDYr9ktrVt6DEoGSwWNoeZ7KOdIvgldOC8wAPAmSXrIA/exec";
+  var LS_TOKEN = "kt_token", LS_USER = "kt_user";
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  var session = { token: lsGet(LS_TOKEN), user: lsGet(LS_USER) };
+
+  function api(action, payload) {
+    var body = { action: action, token: session.token };
+    if (payload) Object.keys(payload).forEach(function (k) { body[k] = payload[k]; });
+    return fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Server nicht erreichbar.");
+      return r.json();
+    }).then(function (j) {
+      if (!j || !j.ok) {
+        var err = new Error(j && j.error ? j.error : "Unbekannter Fehler.");
+        if (err.message === "AUTH") { err.auth = true; err.message = "Bitte melde dich neu an."; }
+        throw err;
+      }
+      return j.data;
+    }, function (e) {
+      if (e && (e.auth || e.message)) throw e;
+      throw new Error("Keine Verbindung. Prüf dein Internet.");
+    });
+  }
+
+  // ---------- Config ----------
+  var METRICS = [
+    { key: "weight", label: "Gewicht", unit: "kg", min: 20, max: 400 },
+    { key: "chest", label: "Brust", unit: "cm", min: 30, max: 250 },
+    { key: "waist", label: "Taille", unit: "cm", min: 30, max: 250 },
+    { key: "belly", label: "Bauch", unit: "cm", min: 30, max: 250 },
+    { key: "hips", label: "Hüfte", unit: "cm", min: 30, max: 250 },
+    { key: "arm", label: "Oberarm", unit: "cm", min: 10, max: 100 },
+    { key: "thigh", label: "Oberschenkel", unit: "cm", min: 20, max: 150 },
+    { key: "calf", label: "Wade", unit: "cm", min: 15, max: 100 }
+  ];
+  var MAP_M = {};
+  METRICS.forEach(function (m) { MAP_M[m.key] = m; });
+  var ENTRY_PAGE = 10;
+  var HIST_PAGE = 26;
+
+  // ---------- Date helpers (always local time) ----------
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function keyOf(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseKey(k) { var p = k.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2] || 1); }
+  function todayKey() { return keyOf(new Date()); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function mondayOf(d) { return addDays(d, -((d.getDay() + 6) % 7)); }
+  function isoWeek(d) {
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    var jan4 = new Date(t.getFullYear(), 0, 4);
+    var days = (t - jan4) / 864e5 + ((jan4.getDay() + 6) % 7);
+    return { year: t.getFullYear(), week: 1 + Math.round((days - 3) / 7) };
+  }
+  function daysInMonth(y, m0) { return new Date(y, m0 + 1, 0).getDate(); }
+  var MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  var MON_S = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
+  var MON_XS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+  var WD_L = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+  var WD_S = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  function dayMonth(d) { return d.getDate() + ". " + MON_S[d.getMonth()]; }
+  function longDate(d) { return WD_L[d.getDay()] + ", " + d.getDate() + ". " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
+  function shortDate(d) { return WD_S[d.getDay()] + ", " + pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear(); }
+
+  var G = {
+    week: {
+      key: function (d) { return keyOf(mondayOf(d)); },
+      start: function (k) { return k; },
+      shift: function (k, n) { return keyOf(addDays(parseKey(k), 7 * n)); },
+      title: function (k) { return "KW " + isoWeek(parseKey(k)).week; },
+      sub: function (k) {
+        var a = parseKey(k), b = addDays(a, 6);
+        return dayMonth(a) + " – " + dayMonth(b) + " " + b.getFullYear();
+      },
+      axis: function (k) { return "KW" + isoWeek(parseKey(k)).week; },
+      length: function () { return 7; },
+      avgLabel: "Wochen-Ø", window: 12
+    },
+    month: {
+      key: function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1); },
+      start: function (k) { return k + "-01"; },
+      shift: function (k, n) { var p = k.split("-").map(Number); var d = new Date(p[0], p[1] - 1 + n, 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1); },
+      title: function (k) { var p = k.split("-").map(Number); return MONTHS[p[1] - 1] + " " + p[0]; },
+      sub: function (k) { var p = k.split("-").map(Number); return "1. – " + daysInMonth(p[0], p[1] - 1) + ". " + MON_S[p[1] - 1]; },
+      axis: function (k) { return MON_XS[Number(k.split("-")[1]) - 1]; },
+      length: function (k) { var p = k.split("-").map(Number); return daysInMonth(p[0], p[1] - 1); },
+      avgLabel: "Monats-Ø", window: 12
+    },
+    year: {
+      key: function (d) { return String(d.getFullYear()); },
+      start: function (k) { return k + "-01-01"; },
+      shift: function (k, n) { return String(Number(k) + n); },
+      title: function (k) { return k; },
+      sub: function () { return "Januar – Dezember"; },
+      axis: function (k) { return k; },
+      length: function (k) { var y = Number(k); return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365; },
+      avgLabel: "Jahres-Ø", window: 12
+    }
+  };
+
+  // ---------- Number helpers ----------
+  var nf1 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var nfRaw = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  var nfTick = function (step) {
+    var dec = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
+    return new Intl.NumberFormat("de-DE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  };
+  function fmt(v) { return nf1.format(v); }
+  function fmtDelta(d) {
+    if (Math.abs(d) < 0.05) return "±0,0";
+    return (d > 0 ? "+" : "−") + nf1.format(Math.abs(d));
+  }
+  function parseNum(s) {
+    s = String(s || "").trim().replace(/\s/g, "").replace(",", ".");
+    if (s === "") return null;
+    if (!/^\d+(\.\d+)?$/.test(s)) return NaN;
+    return Number(s);
+  }
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+
+  // ---------- State ----------
+  var state = {
+    entries: {},
+    metric: "weight",
+    gran: "week",
+    anchor: todayKey(),
+    showAllEntries: false,
+    showAllHist: false,
+    confirmDelete: null,
+    formDirty: false,
+    saving: false,
+    loaded: false,
+    today: todayKey()
+  };
+
+  // ---------- Elements ----------
+  function $(id) { return document.getElementById(id); }
+  var el = {
+    todayLabel: $("todayLabel"), banner: $("banner"), fDate: $("fDate"), datePill: $("datePill"),
+    form: $("entryForm"), weight: $("f-weight"), measureBox: $("measureBox"), measureGrid: $("measureGrid"),
+    measureCount: $("measureCount"), formMsg: $("formMsg"), saveBtn: $("saveBtn"),
+    chips: $("metricChips"), seg: $("granSeg"), prev: $("prevBtn"), next: $("nextBtn"),
+    pTitle: $("periodTitle"), pSub: $("periodSub"), avg: $("avgValue"), avgMeta: $("avgMeta"),
+    weekDays: $("weekDays"), chartWrap: $("chartWrap"), chartTitle: $("chartTitle"), chart: $("chart"), tip: $("tip"),
+    hist: $("histBody"), list: $("entryList"), more: $("moreBtn"), csvBtn: $("csvBtn"), csvOut: $("csvOut"),
+    note: $("storageNote"), toast: $("toast"), statsCard: $("statsCard")
+  };
+
+  METRICS.slice(1).forEach(function (m) {
+    var lab = document.createElement("label");
+    lab.className = "m-field";
+    lab.setAttribute("for", "f-" + m.key);
+    var t = document.createElement("span"); t.textContent = m.label;
+    var box = document.createElement("span"); box.className = "m-input";
+    var inp = document.createElement("input");
+    inp.id = "f-" + m.key; inp.size = 4; inp.inputMode = "decimal"; inp.autocomplete = "off"; inp.placeholder = "–";
+    var u = document.createElement("span"); u.className = "unit"; u.textContent = m.unit;
+    box.appendChild(inp); box.appendChild(u);
+    lab.appendChild(t); lab.appendChild(box);
+    el.measureGrid.appendChild(lab);
+  });
+  function inputFor(k) { return $("f-" + k); }
+
+  // ---------- Storage ----------
+  function call(fn, arg) {
+    return api(fn, arg === undefined ? null : { entry: arg }).catch(function (e) {
+      if (e && e.auth) { doLogout(true); }
+      throw e;
+    });
+  }
+  var store = {
+    mode: "pending",
+    sheetUrl: null,
+    busy: false,
+    init: function () {
+      var self = this;
+      self.mode = "sheet";
+      renderNote();
+      var slow = setTimeout(function () {
+        if (!state.loaded) showBanner("Das Laden dauert länger als sonst. Prüf deine Internetverbindung.");
+      }, 15000);
+      self.load().then(function () { clearTimeout(slow); hideBanner(); }, function (e) {
+        clearTimeout(slow);
+        state.loaded = true;
+        showBanner("Deine Daten konnten nicht geladen werden. " + errMsg(e));
+        onData();
+      });
+    },
+    load: function () {
+      var self = this;
+      self.busy = true;
+      return call("getData").then(function (res) { self.busy = false; self.apply(res); }, function (e) { self.busy = false; throw e; });
+    },
+    apply: function (res) {
+      var m = {};
+      (res && res.entries || []).forEach(function (x) { var c = clean(x.date, x); if (c) m[c.date] = c; });
+      state.entries = m;
+      state.loaded = true;
+      onData();
+    },
+    write: function (date, data) {
+      var self = this;
+      if (self.mode !== "sheet") return Promise.reject(new Error("Nicht verbunden."));
+      self.busy = true;
+      return call("saveEntry", data || { date: date }).then(function (res) {
+        self.busy = false;
+        self.apply(res);
+      }, function (e) { self.busy = false; throw e; });
+    },
+    refresh: function () {
+      if (this.mode !== "sheet" || this.busy || state.saving || state.formDirty) return;
+      this.load().catch(function () {});
+    }
+  };
+
+  function renderNote() {
+    el.note.textContent = "Angemeldet als " + (session.user || "?") + " · ";
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "link-btn";
+    b.textContent = "Abmelden";
+    b.addEventListener("click", function () { doLogout(false); });
+    el.note.appendChild(b);
+  }
+  function errMsg(e) {
+    var msg = e && e.message ? String(e.message).replace(/^Exception:\s*/, "") : "";
+    return msg ? "(" + msg + ")" : "Versuch es gleich nochmal.";
+  }
+
+  function clean(id, x) {
+    if (!x || typeof x !== "object") return null;
+    var date = typeof x.date === "string" ? x.date : id;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    var out = { date: date };
+    var any = false;
+    METRICS.forEach(function (m) { if (isNum(x[m.key])) { out[m.key] = x[m.key]; any = true; } });
+    if (typeof x.updatedAt === "string") out.updatedAt = x.updatedAt;
+    return any ? out : null;
+  }
+
+  function errText(e) {
+    return "Speichern hat nicht geklappt. " + errMsg(e);
+  }
+
+  // ---------- Aggregation ----------
+  function aggregate(metric, gran) {
+    var map = new Map();
+    Object.keys(state.entries).forEach(function (date) {
+      var e = state.entries[date];
+      var v = e[metric];
+      if (!isNum(v)) return;
+      var k = G[gran].key(parseKey(date));
+      var a = map.get(k);
+      if (!a) { a = { key: k, sum: 0, n: 0 }; map.set(k, a); }
+      a.sum += v; a.n += 1;
+    });
+    map.forEach(function (a) { a.avg = a.sum / a.n; });
+    return map;
+  }
+  function sortedKeys(map) { return Array.from(map.keys()).sort(); }
+  function prevWithData(keys, k) {
+    for (var i = keys.length - 1; i >= 0; i--) if (keys[i] < k) return keys[i];
+    return null;
+  }
+  function metricsWithData() {
+    var has = {};
+    Object.keys(state.entries).forEach(function (d) {
+      METRICS.forEach(function (m) { if (isNum(state.entries[d][m.key])) has[m.key] = true; });
+    });
+    return has;
+  }
+
+  // ---------- UI helpers ----------
+  function showBanner(t) { el.banner.textContent = t; el.banner.hidden = false; }
+  function hideBanner() { el.banner.hidden = true; }
+  function setNote(t) { el.note.textContent = t; }
+  var toastTimer = null;
+  function toast(t) {
+    el.toast.textContent = t; el.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.hidden = true; }, 2600);
+  }
+  function make(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function smoothScroll(node) {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    node.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
+
+  // ---------- Form ----------
+  function fillForm(date) {
+    var e = state.entries[date];
+    el.weight.value = e && isNum(e.weight) ? nfRaw.format(e.weight) : "";
+    var n = 0;
+    METRICS.slice(1).forEach(function (m) {
+      var has = e && isNum(e[m.key]);
+      inputFor(m.key).value = has ? nfRaw.format(e[m.key]) : "";
+      if (has) n++;
+    });
+    if (n > 0) el.measureBox.open = true;
+    state.formDirty = false;
+    el.formMsg.textContent = "";
+    updateFormState();
+  }
+  function updateFormState() {
+    var date = el.fDate.value || state.today;
+    var isToday = date === state.today;
+    el.datePill.textContent = isToday ? "Heute" : "Nachtrag";
+    el.datePill.classList.toggle("past", !isToday);
+    el.saveBtn.textContent = state.saving ? "Speichert …" : (state.entries[date] ? "Aktualisieren" : "Eintragen");
+    el.saveBtn.disabled = state.saving;
+    var n = 0;
+    METRICS.slice(1).forEach(function (m) { if (inputFor(m.key).value.trim() !== "") n++; });
+    el.measureCount.textContent = n ? "(" + n + " eingetragen)" : "(optional)";
+  }
+  function setFormDate(date) {
+    el.fDate.value = date;
+    fillForm(date);
+  }
+
+  el.fDate.addEventListener("change", function () {
+    var v = el.fDate.value;
+    if (!v) { v = state.today; el.fDate.value = v; }
+    if (v > state.today) { v = state.today; el.fDate.value = v; }
+    fillForm(v);
+  });
+  el.form.addEventListener("input", function (ev) {
+    if (ev.target === el.fDate) return;
+    state.formDirty = true;
+    el.formMsg.textContent = "";
+    updateFormState();
+  });
+
+  el.form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (state.saving || !state.loaded || store.mode !== "sheet") return;
+    var date = el.fDate.value || state.today;
+    var data = { date: date };
+    var errors = [];
+    var count = 0;
+    METRICS.forEach(function (m) {
+      var inp = m.key === "weight" ? el.weight : inputFor(m.key);
+      var v = parseNum(inp.value);
+      if (v === null) return;
+      if (isNaN(v) || v < m.min || v > m.max) { errors.push(m.label); return; }
+      data[m.key] = Math.round(v * 100) / 100;
+      count++;
+    });
+    if (errors.length) {
+      el.formMsg.textContent = "Bitte prüfen: " + errors.join(", ") + ". Gib eine Zahl ein, z. B. 78,4.";
+      return;
+    }
+    var existing = state.entries[date];
+    if (!count && !existing) {
+      el.formMsg.textContent = "Trag mindestens einen Wert ein.";
+      el.weight.focus();
+      return;
+    }
+    data.updatedAt = new Date().toISOString();
+    state.saving = true;
+    updateFormState();
+    store.write(date, count ? data : null).then(function () {
+      state.saving = false;
+      state.formDirty = false;
+      state.anchor = date;
+      el.weight.blur();
+      toast(count ? "Gespeichert für " + shortDate(parseKey(date)) : "Eintrag vom " + shortDate(parseKey(date)) + " gelöscht");
+      renderAll();
+    }).catch(function (e) {
+      state.saving = false;
+      el.formMsg.textContent = errText(e);
+      updateFormState();
+    });
+  });
+
+  // ---------- Controls ----------
+  el.seg.addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-g]");
+    if (!b) return;
+    state.gran = b.getAttribute("data-g");
+    state.showAllHist = false;
+    renderStats(); renderHistory();
+  });
+  el.prev.addEventListener("click", function () { shiftPeriod(-1); });
+  el.next.addEventListener("click", function () { shiftPeriod(1); });
+  function shiftPeriod(n) {
+    var g = G[state.gran];
+    var k = g.shift(g.key(parseKey(state.anchor)), n);
+    if (k > g.key(parseKey(state.today))) return;
+    state.anchor = g.start(k);
+    renderStats(); renderHistory();
+  }
+  function selectPeriod(k) {
+    state.anchor = G[state.gran].start(k);
+    renderStats(); renderHistory();
+  }
+
+  // ---------- Rendering ----------
+  function renderAll() {
+    el.todayLabel.textContent = longDate(parseKey(state.today));
+    el.fDate.max = state.today;
+    updateFormState();
+    renderStats();
+    renderHistory();
+    renderEntries();
+  }
+
+  function renderChips() {
+    var has = metricsWithData();
+    if (!has[state.metric] && state.metric !== "weight") state.metric = "weight";
+    el.chips.textContent = "";
+    METRICS.forEach(function (m) {
+      if (m.key !== "weight" && !has[m.key]) return;
+      var b = make("button", "chip", m.label);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(m.key === state.metric));
+      b.addEventListener("click", function () { state.metric = m.key; state.showAllHist = false; renderStats(); renderHistory(); });
+      el.chips.appendChild(b);
+    });
+    el.chips.hidden = el.chips.children.length < 2;
+  }
+
+  function renderStats() {
+    renderChips();
+    Array.prototype.forEach.call(el.seg.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-g") === state.gran));
+    });
+    var g = G[state.gran], m = MAP_M[state.metric];
+    var agg = aggregate(state.metric, state.gran);
+    var keys = sortedKeys(agg);
+    var sel = g.key(parseKey(state.anchor));
+    var cur = g.key(parseKey(state.today));
+    el.pTitle.textContent = g.title(sel);
+    el.pSub.textContent = g.sub(sel);
+    el.next.disabled = sel >= cur;
+    el.prev.disabled = !keys.length || sel <= keys[0];
+
+    var a = agg.get(sel);
+    el.avg.textContent = "";
+    el.avgMeta.textContent = "";
+    if (!state.loaded) {
+      el.avg.className = "hero-value empty"; el.avg.textContent = "…";
+      el.avgMeta.textContent = "Lädt deine Daten";
+    } else if (a) {
+      el.avg.className = "hero-value";
+      el.avg.appendChild(document.createTextNode("Ø " + fmt(a.avg)));
+      el.avg.appendChild(make("span", "unit", m.unit));
+      var len = g.length(sel);
+      el.avgMeta.appendChild(document.createTextNode("aus " + a.n + (a.n === 1 ? " Wert" : " Werten") + " (" + len + " Tage)"));
+      var pk = prevWithData(keys, sel);
+      if (pk) {
+        el.avgMeta.appendChild(document.createTextNode(" · "));
+        el.avgMeta.appendChild(make("span", "delta", fmtDelta(a.avg - agg.get(pk).avg) + " " + m.unit));
+        el.avgMeta.appendChild(document.createTextNode(" ggü. " + g.title(pk)));
+      }
+    } else {
+      el.avg.className = "hero-value empty";
+      el.avg.textContent = "Keine Werte";
+      el.avgMeta.textContent = keys.length
+        ? "In diesem Zeitraum hast du " + m.label + " nicht eingetragen."
+        : (m.key === "weight" ? "Trag oben dein Gewicht ein, dann erscheint hier dein Durchschnitt." : "Noch keine Werte.");
+    }
+    renderWeekDays(sel);
+    renderChart(agg, keys, sel, cur);
+  }
+
+  function renderWeekDays(sel) {
+    el.weekDays.textContent = "";
+    if (state.gran !== "week") { el.weekDays.hidden = true; return; }
+    el.weekDays.hidden = false;
+    var m = MAP_M[state.metric];
+    var mon = parseKey(sel);
+    for (var i = 0; i < 7; i++) {
+      (function (d) {
+        var k = keyOf(d);
+        var e = state.entries[k];
+        var v = e && e[m.key];
+        var b = make("button", "day");
+        b.type = "button";
+        if (k === state.today) b.classList.add("today");
+        b.appendChild(make("span", "d", WD_S[d.getDay()] + " " + d.getDate() + "."));
+        var vs = make("span", "v" + (isNum(v) ? "" : " none"), isNum(v) ? fmt(v) : "–");
+        b.appendChild(vs);
+        var future = k > state.today;
+        b.disabled = future;
+        b.setAttribute("aria-label", WD_L[d.getDay()] + ", " + d.getDate() + ". " + MONTHS[d.getMonth()] + ": " +
+          (isNum(v) ? fmt(v) + " " + m.unit : "kein Wert") + (future ? "" : ". Antippen zum Eintragen oder Ändern."));
+        b.addEventListener("click", function () {
+          setFormDate(k);
+          smoothScroll(el.form.closest(".card"));
+          setTimeout(function () { (m.key === "weight" ? el.weight : inputFor(m.key)).focus({ preventScroll: true }); }, 350);
+        });
+        el.weekDays.appendChild(b);
+      })(addDays(mon, i));
+    }
+  }
+
+  function niceTicks(lo, hi, target) {
+    var span = hi - lo;
+    var raw = span / Math.max(1, target);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var steps = [1, 2, 2.5, 5, 10];
+    var step = mag;
+    for (var i = 0; i < steps.length; i++) { if (steps[i] * mag >= raw) { step = steps[i] * mag; break; } }
+    var a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step;
+    var t = [];
+    for (var v = a; v <= b + step / 1e6; v += step) t.push(Math.round(v * 1000) / 1000);
+    return { ticks: t, step: step, lo: a, hi: b };
+  }
+
+  var chartState = null;
+  function renderChart(agg, keys, sel, cur) {
+    var g = G[state.gran], m = MAP_M[state.metric];
+    el.chartTitle.textContent = g.avgLabel + " " + m.label + " (" + m.unit + ")";
+    el.tip.hidden = true;
+    var N = g.window;
+    if (state.gran === "year") {
+      var first = keys.length ? Number(keys[0]) : Number(cur);
+      N = Math.min(12, Math.max(1, Number(cur) - first + 1));
+    }
+    var end = cur;
+    if (sel < g.shift(cur, -(N - 1))) end = sel;
+    var win = [];
+    for (var i = N - 1; i >= 0; i--) win.push(g.shift(end, -i));
+    var pts = win.map(function (k, i) { var a = agg.get(k); return { k: k, i: i, a: a || null }; });
+    var vals = pts.filter(function (p) { return p.a; }).map(function (p) { return p.a.avg; });
+
+    var W = Math.max(280, Math.round(el.chart.clientWidth || 320));
+    var H = 190;
+    var L = 40, R = 12, T = 26, B = 26;
+    var pw = W - L - R, ph = H - T - B;
+    var band = pw / N;
+    var s = [];
+    s.push('<svg viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="' +
+      esc(g.avgLabel + " " + m.label + ", letzte " + N + " Zeiträume. Werte stehen auch in der Tabelle Verlauf.") + '">');
+    if (!vals.length) {
+      s.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ph) + '" y2="' + (T + ph) + '" stroke="var(--line)" stroke-width="1"/>');
+      s.push('<text x="' + (L + pw / 2) + '" y="' + (T + ph / 2) + '" text-anchor="middle" font-size="14" fill="var(--muted)">Noch keine Werte in diesem Zeitraum</text>');
+    } else {
+      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      if (hi - lo < 1) { var mid = (hi + lo) / 2; lo = mid - 0.5; hi = mid + 0.5; }
+      var nt = niceTicks(lo, hi, 4);
+      var f = nfTick(nt.step);
+      var y = function (v) { return T + ph - (v - nt.lo) / (nt.hi - nt.lo) * ph; };
+      var x = function (i) { return L + band * (i + 0.5); };
+      var si = win.indexOf(sel);
+      if (si >= 0) s.push('<rect x="' + (L + band * si + 1) + '" y="' + T + '" width="' + Math.max(0, band - 2) + '" height="' + ph + '" rx="6" fill="var(--accent-soft)"/>');
+      nt.ticks.forEach(function (t) {
+        var yy = y(t).toFixed(1);
+        s.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/>');
+        s.push('<text x="' + (L - 8) + '" y="' + yy + '" dy="0.35em" text-anchor="end" font-size="12" fill="var(--muted)" style="font-variant-numeric:tabular-nums">' + esc(f.format(t)) + "</text>");
+      });
+      var every = band >= 34 ? 1 : band >= 17 ? 2 : 3;
+      win.forEach(function (k, i) {
+        if ((N - 1 - i) % every !== 0) return;
+        s.push('<text x="' + x(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" fill="' + (k === sel ? "var(--ink)" : "var(--muted)") + '"' + (k === sel ? ' font-weight="600"' : "") + ">" + esc(g.axis(k)) + "</text>");
+      });
+      var path = pts.filter(function (p) { return p.a; }).map(function (p, j) {
+        return (j ? "L" : "M") + x(p.i).toFixed(1) + " " + y(p.a.avg).toFixed(1);
+      }).join(" ");
+      s.push('<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+      pts.forEach(function (p) {
+        if (!p.a) return;
+        var isSel = p.k === sel;
+        s.push('<circle cx="' + x(p.i).toFixed(1) + '" cy="' + y(p.a.avg).toFixed(1) + '" r="' + (isSel ? 6 : 4) + '" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>');
+      });
+      var sp = pts[si];
+      if (sp && sp.a) {
+        var lx = Math.min(W - R - 4, Math.max(L + 4, x(si)));
+        var anchor = x(si) > W - R - 24 ? "end" : x(si) < L + 24 ? "start" : "middle";
+        s.push('<text x="' + lx.toFixed(1) + '" y="' + (y(sp.a.avg) - 12).toFixed(1) + '" text-anchor="' + anchor + '" font-size="13" font-weight="600" fill="var(--ink)" style="font-variant-numeric:tabular-nums">' + esc(fmt(sp.a.avg)) + "</text>");
+      }
+      chartState = { x: x, y: y, pts: pts, W: W };
+    }
+    win.forEach(function (k, i) {
+      var a = agg.get(k);
+      var label = g.title(k) + ": " + (a ? "Ø " + fmt(a.avg) + " " + m.unit + ", " + a.n + (a.n === 1 ? " Wert" : " Werte") : "keine Werte");
+      s.push('<rect class="hit" data-k="' + esc(k) + '" x="' + (L + band * i) + '" y="0" width="' + band + '" height="' + H + '" tabindex="0" role="button" aria-label="' + esc(label) + '"/>');
+    });
+    s.push("</svg>");
+    el.chart.innerHTML = s.join("");
+
+    Array.prototype.forEach.call(el.chart.querySelectorAll(".hit"), function (r) {
+      var k = r.getAttribute("data-k");
+      r.addEventListener("click", function () { selectPeriod(k); });
+      r.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); selectPeriod(k); } });
+      r.addEventListener("pointerenter", function (ev) { if (ev.pointerType === "mouse") showTip(k, agg); });
+      r.addEventListener("pointerleave", function () { el.tip.hidden = true; });
+    });
+  }
+
+  function showTip(k, agg) {
+    var g = G[state.gran], m = MAP_M[state.metric];
+    var a = agg.get(k);
+    var svg = el.chart.querySelector("svg");
+    if (!svg || !chartState) return;
+    var p = chartState.pts.find(function (q) { return q.k === k; });
+    if (!p) return;
+    var scale = svg.getBoundingClientRect().width / chartState.W;
+    var px = chartState.x(p.i) * scale;
+    var py = (a ? chartState.y(a.avg) : 40) * scale;
+    el.tip.textContent = g.title(k) + " · " + (a ? "Ø " + fmt(a.avg) + " " + m.unit + " · " + a.n + (a.n === 1 ? " Wert" : " Werte") : "keine Werte");
+    el.tip.hidden = false;
+    var wrapW = el.chartWrap.clientWidth;
+    var tw = el.tip.offsetWidth;
+    var left = Math.min(wrapW - tw / 2, Math.max(tw / 2, px));
+    el.tip.style.left = left + "px";
+    el.tip.style.top = (el.chartTitle.offsetHeight + 4 + py - 12) + "px";
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
+  }
+
+  function renderHistory() {
+    var g = G[state.gran], m = MAP_M[state.metric];
+    var agg = aggregate(state.metric, state.gran);
+    var keys = sortedKeys(agg);
+    var sel = g.key(parseKey(state.anchor));
+    el.hist.textContent = "";
+    if (!keys.length) {
+      el.hist.appendChild(make("p", "empty-note", state.loaded
+        ? ({ week: "Hier steht jede Woche mit ihrem Durchschnitt, sobald du Werte einträgst.", month: "Hier steht jeder Monat mit seinem Durchschnitt, sobald du Werte einträgst.", year: "Hier steht jedes Jahr mit seinem Durchschnitt, sobald du Werte einträgst." })[state.gran]
+        : "Lädt …"));
+      return;
+    }
+    var wrap = make("div", "table-scroll");
+    var t = make("table");
+    var thead = make("thead");
+    var hr = make("tr");
+    [["Zeitraum", ""], ["Ø " + m.unit, "r"], ["Δ", "r"], ["Werte", "r"]].forEach(function (h) { var th = make("th", h[1], h[0]); th.scope = "col"; hr.appendChild(th); });
+    thead.appendChild(hr); t.appendChild(thead);
+    var tb = make("tbody");
+    var desc = keys.slice().reverse();
+    var shown = state.showAllHist ? desc : desc.slice(0, HIST_PAGE);
+    shown.forEach(function (k) {
+      var a = agg.get(k);
+      var idx = keys.indexOf(k);
+      var prev = idx > 0 ? agg.get(keys[idx - 1]) : null;
+      var tr = make("tr", k === sel ? "sel" : "");
+      tr.tabIndex = 0;
+      var td1 = make("td");
+      td1.appendChild(document.createTextNode(g.title(k)));
+      if (state.gran === "week") td1.appendChild(make("span", "s", g.sub(k)));
+      tr.appendChild(td1);
+      tr.appendChild(make("td", "r", fmt(a.avg)));
+      tr.appendChild(make("td", "r", prev ? fmtDelta(a.avg - prev.avg) : "–"));
+      tr.appendChild(make("td", "r", String(a.n)));
+      var go = function () { selectPeriod(k); smoothScroll(el.statsCard); };
+      tr.addEventListener("click", go);
+      tr.addEventListener("keydown", function (ev) { if (ev.key === "Enter") go(); });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    wrap.appendChild(t);
+    el.hist.appendChild(wrap);
+    if (desc.length > shown.length) {
+      var b = make("button", "btn-ghost", "Alle " + desc.length + " anzeigen");
+      b.type = "button";
+      b.style.marginTop = "10px";
+      b.addEventListener("click", function () { state.showAllHist = true; renderHistory(); });
+      el.hist.appendChild(b);
+    }
+  }
+
+  function renderEntries() {
+    var dates = Object.keys(state.entries).sort().reverse();
+    el.list.textContent = "";
+    if (!dates.length) {
+      var li = make("li");
+      li.appendChild(make("span", "e-vals", state.loaded ? "Noch keine Einträge." : "Lädt …"));
+      el.list.appendChild(li);
+      el.more.hidden = true;
+      el.csvBtn.hidden = true;
+      el.csvOut.hidden = true;
+      return;
+    }
+    el.csvBtn.hidden = false;
+    var shown = state.showAllEntries ? dates : dates.slice(0, ENTRY_PAGE);
+    shown.forEach(function (d) {
+      var e = state.entries[d];
+      var li = make("li");
+      var info = make("div");
+      info.appendChild(make("div", "e-date", shortDate(parseKey(d))));
+      var parts = [];
+      if (isNum(e.weight)) parts.push(nfRaw.format(e.weight) + " kg");
+      METRICS.slice(1).forEach(function (m) { if (isNum(e[m.key])) parts.push(m.label + " " + nfRaw.format(e[m.key])); });
+      info.appendChild(make("div", "e-vals", parts.join(" · ")));
+      li.appendChild(info);
+      var act = make("div", "e-actions");
+      if (state.confirmDelete === d) {
+        var yes = make("button", "btn-small danger-fill", "Löschen");
+        yes.type = "button";
+        yes.setAttribute("aria-label", "Eintrag vom " + shortDate(parseKey(d)) + " endgültig löschen");
+        yes.addEventListener("click", function () {
+          state.confirmDelete = null;
+          store.write(d, null).then(function () {
+            toast("Eintrag vom " + shortDate(parseKey(d)) + " gelöscht");
+            if (el.fDate.value === d && !state.formDirty) fillForm(d);
+            renderAll();
+          }).catch(function (err) { toast(errText(err)); renderEntries(); });
+        });
+        var no = make("button", "btn-small", "Abbrechen");
+        no.type = "button";
+        no.addEventListener("click", function () { state.confirmDelete = null; renderEntries(); });
+        act.appendChild(no); act.appendChild(yes);
+      } else {
+        var ed = make("button", "btn-small", "Ändern");
+        ed.type = "button";
+        ed.setAttribute("aria-label", "Eintrag vom " + shortDate(parseKey(d)) + " ändern");
+        ed.addEventListener("click", function () { setFormDate(d); smoothScroll(el.form.closest(".card")); });
+        var del = make("button", "btn-small danger", "Löschen");
+        del.type = "button";
+        del.setAttribute("aria-label", "Eintrag vom " + shortDate(parseKey(d)) + " löschen");
+        del.addEventListener("click", function () { state.confirmDelete = d; renderEntries(); });
+        act.appendChild(ed); act.appendChild(del);
+      }
+      li.appendChild(act);
+      el.list.appendChild(li);
+    });
+    el.more.hidden = dates.length <= ENTRY_PAGE;
+    el.more.textContent = state.showAllEntries ? "Weniger anzeigen" : "Alle " + dates.length + " anzeigen";
+  }
+  el.more.addEventListener("click", function () { state.showAllEntries = !state.showAllEntries; renderEntries(); });
+
+  function buildCsv() {
+    var dec = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2, useGrouping: false });
+    var head = ["Datum"].concat(METRICS.map(function (m) { return m.label + " (" + m.unit + ")"; }));
+    var rows = [head.join(";")];
+    Object.keys(state.entries).sort().forEach(function (d) {
+      var e = state.entries[d];
+      rows.push([d].concat(METRICS.map(function (m) { return isNum(e[m.key]) ? dec.format(e[m.key]) : ""; })).join(";"));
+    });
+    return rows.join("\n");
+  }
+  el.csvBtn.addEventListener("click", function () {
+    var csv = buildCsv();
+    var fallback = function () {
+      el.csvOut.value = csv; el.csvOut.hidden = false; el.csvOut.focus(); el.csvOut.select();
+      toast("Markiere den Text und kopiere ihn");
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(csv).then(function () { toast("CSV kopiert"); el.csvOut.hidden = true; }, fallback);
+      } else fallback();
+    } catch (e) { fallback(); }
+  });
+
+  // ---------- Data arrival & day change ----------
+  function onData() {
+    if (!state.formDirty && !state.saving) fillForm(el.fDate.value || state.today);
+    renderAll();
+  }
+  function refreshToday() {
+    var t = todayKey();
+    if (t === state.today) return;
+    var old = state.today;
+    state.today = t;
+    if (!state.formDirty && el.fDate.value === old) { el.fDate.value = t; fillForm(t); }
+    if (state.anchor === old) state.anchor = t;
+    renderAll();
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && session.token) { refreshToday(); store.refresh(); } });
+  window.addEventListener("focus", refreshToday);
+  setInterval(refreshToday, 60000);
+
+  var rT = null;
+  if (window.ResizeObserver) {
+    var lastW = 0;
+    new ResizeObserver(function () {
+      var w = el.chart.clientWidth;
+      if (Math.abs(w - lastW) < 2) return;
+      lastW = w;
+      clearTimeout(rT);
+      rT = setTimeout(function () { renderStats(); }, 80);
+    }).observe(el.chart);
+  }
+
+  // ---------- Login ----------
+  var auth = {
+    view: $("authView"), app: $("appView"), seg: $("authSeg"), form: $("authForm"),
+    user: $("authUser"), pw: $("authPw"), pw2: $("authPw2"), pw2Wrap: $("authPw2Wrap"),
+    hint: $("authHint"), msg: $("authMsg"), btn: $("authBtn"), mode: "login", busy: false
+  };
+  function setAuthMode(mode) {
+    auth.mode = mode;
+    Array.prototype.forEach.call(auth.seg.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-mode") === mode));
+    });
+    var reg = mode === "register";
+    auth.pw2Wrap.hidden = !reg;
+    auth.hint.hidden = !reg;
+    auth.pw.autocomplete = reg ? "new-password" : "current-password";
+    auth.btn.textContent = reg ? "Konto erstellen" : "Anmelden";
+    auth.msg.textContent = "";
+  }
+  auth.seg.addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-mode]");
+    if (b) setAuthMode(b.getAttribute("data-mode"));
+  });
+  auth.form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (auth.busy) return;
+    var u = auth.user.value.trim().toLowerCase(), p = auth.pw.value;
+    if (!u || !p) { auth.msg.textContent = "Bitte Benutzername und Passwort eingeben."; return; }
+    if (auth.mode === "register" && p !== auth.pw2.value) { auth.msg.textContent = "Die Passwörter stimmen nicht überein."; return; }
+    auth.busy = true;
+    auth.btn.disabled = true;
+    auth.btn.textContent = "Einen Moment …";
+    auth.msg.textContent = "";
+    api(auth.mode, { username: u, password: p }).then(function (res) {
+      session.token = res.token; session.user = res.username;
+      lsSet(LS_TOKEN, res.token); lsSet(LS_USER, res.username);
+      auth.pw.value = ""; auth.pw2.value = "";
+      showApp();
+    }).catch(function (e) {
+      auth.msg.textContent = e && e.message ? e.message : "Das hat nicht geklappt.";
+    }).then(function () {
+      auth.busy = false;
+      auth.btn.disabled = false;
+      auth.btn.textContent = auth.mode === "register" ? "Konto erstellen" : "Anmelden";
+    });
+  });
+
+  function doLogout(expired) {
+    if (!expired && session.token) api("logout").catch(function () {});
+    lsDel(LS_TOKEN); lsDel(LS_USER);
+    session.token = null; session.user = null;
+    state.entries = {}; state.loaded = false;
+    store.mode = "pending";
+    showLogin(expired ? "Deine Anmeldung ist abgelaufen. Bitte melde dich neu an." : "");
+  }
+  function showLogin(msg) {
+    auth.app.hidden = true;
+    auth.view.hidden = false;
+    setAuthMode("login");
+    if (msg) auth.msg.textContent = msg;
+  }
+
+  // ---------- Start ----------
+  function showApp() {
+    auth.view.hidden = true;
+    auth.app.hidden = false;
+    state.entries = {}; state.loaded = false;
+    el.fDate.value = state.today;
+    updateFormState();
+    renderAll();
+    store.init();
+  }
+  if (session.token) showApp(); else showLogin("");
+
+})();
+</script>
+</body>
+</html>
